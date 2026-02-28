@@ -37,7 +37,11 @@ echo ""
 
 extract_hash() {
   local log_file="$1"
-  rg -o 'DETERMINISM_HASH=[0-9]+' "$log_file" | tail -n1 | cut -d= -f2
+  if command -v rg >/dev/null 2>&1; then
+    rg -o 'DETERMINISM_HASH=[0-9]+' "$log_file" | tail -n1 | cut -d= -f2
+  else
+    grep -Eo 'DETERMINISM_HASH=[0-9]+' "$log_file" | tail -n1 | cut -d= -f2
+  fi
 }
 
 record_failure_and_exit() {
