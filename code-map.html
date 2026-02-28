@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic Mad Scientist — Code Map</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --green: #3fb950;
+    --green-dim: #1a3828;
+    --blue: #58a6ff;
+    --blue-dim: #1a2840;
+    --purple: #bc8cff;
+    --purple-dim: #2a1f40;
+    --orange: #f0883e;
+    --orange-dim: #3d2210;
+    --red: #ff7b72;
+    --red-dim: #3d1a18;
+    --yellow: #e3b341;
+    --yellow-dim: #3d2e10;
+    --teal: #39d0d0;
+    --teal-dim: #0f2e2e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1a2438 0%, #0d1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header-icon { font-size: 32px; }
+  .header h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+  .header p { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .badge-green { background: var(--green-dim); color: var(--green); border: 1px solid #3fb95044; }
+  .badge-blue  { background: var(--blue-dim);  color: var(--blue);  border: 1px solid #58a6ff44; }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 85px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 85px);
+    overflow-y: auto;
+  }
+  .sidebar-section { padding: 8px 16px 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .sidebar a {
+    display: block;
+    padding: 5px 16px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 12px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar a:hover { color: var(--text); background: var(--surface2); border-left-color: var(--blue); }
+
+  /* ── Main content ── */
+  .main { padding: 24px 32px; overflow-x: auto; }
+
+  /* ── Section headings ── */
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 32px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title:first-of-type { margin-top: 0; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── Grid layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+  /* ── File module boxes ── */
+  .module {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .module-header {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .module-body { padding: 10px 14px; }
+  .module-item {
+    padding: 3px 0;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .module-item-dot { flex-shrink: 0; margin-top: 5px; width: 5px; height: 5px; border-radius: 50%; }
+
+  /* ── Message flow boxes ── */
+  .msg-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .msg-label {
+    font-weight: 700;
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 1px;
+  }
+  .msg-desc { color: var(--muted); }
+
+  /* ── Storage table ── */
+  .storage-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .storage-table th {
+    background: var(--surface2);
+    padding: 7px 12px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: 1px solid var(--border);
+  }
+  .storage-table td {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .storage-table tr:hover td { background: var(--surface2); }
+  code {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 10px;
+    color: var(--purple);
+  }
+  code.green { color: var(--green); }
+  code.blue  { color: var(--blue);  }
+  code.orange { color: var(--orange); }
+
+  /* ── Error list ── */
+  .error-list { columns: 2; column-gap: 16px; }
+  .error-item {
+    break-inside: avoid;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 0 5px 5px 0;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+  .error-name { font-weight: 700; color: var(--red); font-family: monospace; }
+  .error-desc { color: var(--muted); margin-top: 1px; font-size: 10px; }
+
+  /* ── Flow diagram ── */
+  .flow {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    overflow-x: auto;
+    padding: 8px 0;
+  }
+  .flow-step {
+    flex-shrink: 0;
+    text-align: center;
+    position: relative;
+  }
+  .flow-box {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    color: var(--muted);
+    font-size: 16px;
+    align-self: center;
+    padding-top: 0;
+    margin-top: -2px;
+  }
+  .flow-label {
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── Audit badge row ── */
+  .audit-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .audit-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  .audit-chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Config fields ── */
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .config-field {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  .config-field-name { font-weight: 700; color: var(--blue); font-family: monospace; }
+  .config-field-type { color: var(--purple); font-size: 10px; }
+  .config-field-default { color: var(--green); font-size: 10px; }
+
+  /* ── Colors ── */
+  .c-green   { color: var(--green); }
+  .c-blue    { color: var(--blue); }
+  .c-purple  { color: var(--purple); }
+  .c-orange  { color: var(--orange); }
+  .c-red     { color: var(--red); }
+  .c-yellow  { color: var(--yellow); }
+  .c-teal    { color: var(--teal); }
+  .c-muted   { color: var(--muted); }
+
+  .bg-green  { background: var(--green-dim);  border-color: #3fb95055; }
+  .bg-blue   { background: var(--blue-dim);   border-color: #58a6ff55; }
+  .bg-purple { background: var(--purple-dim); border-color: #bc8cff55; }
+  .bg-orange { background: var(--orange-dim); border-color: #f0883e55; }
+  .bg-red    { background: var(--red-dim);    border-color: #ff7b7255; }
+  .bg-yellow { background: var(--yellow-dim); border-color: #e3b34155; }
+  .bg-teal   { background: var(--teal-dim);   border-color: #39d0d055; }
+
+  /* ── Divider ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* ── Tooltip ── */
+  [title] { cursor: help; }
+
+  /* ── Sticky note ── */
+  .note {
+    background: var(--yellow-dim);
+    border: 1px solid #e3b34133;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--yellow);
+    margin-bottom: 12px;
+  }
+  .note strong { font-weight: 700; }
+
+  /* ── Stats row ── */
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    text-align: center;
+    min-width: 90px;
+  }
+  .stat-value { font-size: 24px; font-weight: 800; }
+  .stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Anchor targets ── */
+  [id] { scroll-margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-icon">🧪</div>
+  <div>
+    <h1>Cosmic Mad Scientist Contract <span class="badge badge-green">v0.1.0</span><span class="badge badge-blue">CosmWasm 1.5</span></h1>
+    <p>NFT Auction &amp; Swap Pool · Cosmos Hub · CW721 · 62 tests passing</p>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Overview</div>
+    <a href="#overview">📊 Stats</a>
+    <a href="#architecture">🏗 Architecture</a>
+    <a href="#modules">📁 File Modules</a>
+    <div class="sidebar-section">Messages</div>
+    <a href="#instantiate">🚀 InstantiateMsg</a>
+    <a href="#execute">⚡ ExecuteMsg</a>
+    <a href="#query">🔍 QueryMsg</a>
+    <div class="sidebar-section">Internals</div>
+    <a href="#state">💾 State / Storage</a>
+    <a href="#config">⚙️ Config</a>
+    <a href="#auction-struct">🏷 Auction Struct</a>
+    <a href="#flow-auction">🔄 Auction Flow</a>
+    <a href="#flow-swap">🔄 Swap Flow</a>
+    <a href="#receive-nft">📨 ReceiveNft Router</a>
+    <div class="sidebar-section">Errors &amp; Security</div>
+    <a href="#errors">❌ Error Types</a>
+    <a href="#hardening">🔒 Hardening</a>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- STATS -->
+    <div id="overview"></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-value c-blue">5</div><div class="stat-label">Source Files</div></div>
+      <div class="stat"><div class="stat-value c-green">62</div><div class="stat-label">Tests Passing</div></div>
+      <div class="stat"><div class="stat-value c-purple">10</div><div class="stat-label">Execute Variants</div></div>
+      <div class="stat"><div class="stat-value c-orange">8</div><div class="stat-label">Query Variants</div></div>
+      <div class="stat"><div class="stat-value c-red">30</div><div class="stat-label">Error Variants</div></div>
+      <div class="stat"><div class="stat-value c-teal">8</div><div class="stat-label">Storage Keys</div></div>
+      <div class="stat"><div class="stat-value c-yellow">11+5</div><div class="stat-label">Audit Fixes</div></div>
+    </div>
+
+    <!-- ARCHITECTURE -->
+    <div class="section-title" id="architecture">🏗 High-Level Architecture</div>
+    <div class="card">
+      <div class="flow" style="justify-content: flex-start;">
+        <div class="flow-step">
+          <div class="flow-box bg-purple" style="color:var(--purple)">CW721 NFT<br><small>Mad Scientist</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-blue" style="color:var(--blue)">ReceiveNft<br><small>Hook Router</small></div>
+          <div class="flow-label">SendNft → ReceiveNft</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-green" style="color:var(--green)">Auction<br><small>Module</small></div>
+          <div class="flow-label">Bid / DepositMega</div>
+        </div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-step">
+          <div class="flow-box bg-orange" style="color:var(--orange)">Swap Pool<br><small>Module</small></div>
+          <div class="flow-label">SwapDeposit</div>
+        </div>
+      </div>
+      <hr>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+        <div style="font-size:11px;color:var(--muted)"><strong class="c-green">Auction:</strong> Admin sends Cosmic NFT → auction created → bidders send Standard NFTs (cumulative) → highest bidder wins Cosmic → loser NFTs go to swap pool</div>
+        <div style="font-size:11px;color:var(--muted)"><strong class="c-orange">Swap Pool:</strong> Users send Standard Mad NFTs via SwapDeposit → staged → ClaimSwap to exchange 1:1 with pool contents</div>
+      </div>
+    </div>
+
+    <!-- FILE MODULES -->
+    <div class="section-title" id="modules">📁 File Modules</div>
+    <div class="grid-3" style="gap:12px;">
+
+      <div class="module">
+        <div class="module-header bg-blue" style="color:var(--blue)">📄 contract.rs <span style="font-weight:400;font-size:10px;color:var(--muted)">~1082 lines</span></div>
+        <div class="module-body">
+          <div class="module-item"><div class="module-item-dot" style="background:var(--green)"></div><span><code class="green">instantiate()</code> — init config, storage</span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute()</code> — funds guard + routing</span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_receive_nft()</code> — NFT router</span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_create_auction()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_receive_bid()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_finalize_auction()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_withdraw_bid()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_cancel_auction()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_swap_deposit()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_claim_swap()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_withdraw_staged()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_set_paused()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_propose_admin()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_accept_admin()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_force_complete()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--blue)"></div><span><code class="blue">execute_update_config()</code></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--purple)"></div><span><code>query()</code> + 8 query fns</span></div>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="module-header bg-orange" style="color:var(--orange)">📄 state.rs</div>
+        <div class="module-body">
+          <div class="module-item"><div class="module-item-dot" style="background:var(--orange)"></div><span><code class="orange">Config</code> struct (12 fields)</span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--orange)"></div><span><code class="orange">Auction</code> struct (11 fields)</span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--orange)"></div><span><code class="orange">Bid</code> struct (3 fields)</span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--orange)"></div><span><code class="orange">AuctionStatus</code> enum (4 variants)</span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span><code>SwapRecord</code> (attrs only)</span></div>
+          <div class="module-item" style="margin-top:8px"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>CONFIG</code> <small class="c-muted">Item&lt;Config&gt;</small></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>NEXT_AUCTION_ID</code> <small class="c-muted">Item&lt;u64&gt;</small></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>AUCTIONS</code> <small class="c-muted">Map&lt;u64, Auction&gt;</small></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>BIDS</code> <small class="c-muted">Map&lt;(u64,Addr), Bid&gt;</small></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>POOL</code> <small class="c-muted">Map&lt;&str, ()&gt;</small></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>POOL_SIZE</code> <small class="c-muted">Item&lt;u64&gt;</small></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>ESCROW</code> <small class="c-muted">Map&lt;(u64,Addr), Vec&lt;String&gt;&gt;</small></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>ACTIVE_MEGA_AUCTIONS</code> <small class="c-muted">Map&lt;&str, u64&gt;</small></span></div>
+          <div class="module-item"><div class="module-item-dot" style="background:var(--teal)"></div><span><code>SWAP_STAGING</code> <small class="c-muted">Map&lt;Addr, Vec&lt;String&gt;&gt;</small></span></div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="module">
+          <div class="module-header bg-purple" style="color:var(--purple)">📄 msg.rs</div>
+          <div class="module-body">
+            <div class="module-item"><div class="module-item-dot" style="background:var(--purple)"></div><span><code>InstantiateMsg</code> — 10 fields</span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--purple)"></div><span><code>ExecuteMsg</code> — 10 variants</span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--purple)"></div><span><code>QueryMsg</code> — 8 variants</span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--purple)"></div><span><code>ReceiveNftAction</code> — 3 variants</span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span>7× Response structs</span></div>
+          </div>
+        </div>
+        <div class="module">
+          <div class="module-header bg-red" style="color:var(--red)">📄 error.rs</div>
+          <div class="module-body">
+            <div class="module-item"><div class="module-item-dot" style="background:var(--red)"></div><span><code>ContractError</code> enum</span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span>30 typed error variants</span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span>Derives <code>thiserror</code>, <code>PartialEq</code></span></div>
+          </div>
+        </div>
+        <div class="module">
+          <div class="module-header bg-green" style="color:var(--green)">📄 tests.rs</div>
+          <div class="module-body">
+            <div class="module-item"><div class="module-item-dot" style="background:var(--green)"></div><span>62 unit tests</span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span>Helper: <code>setup_contract()</code></span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span>Helper: <code>send_bid_nft()</code></span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span>Helper: <code>send_mega_for_auction()</code></span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span>Helper: <code>send_swap_deposit()</code></span></div>
+            <div class="module-item"><div class="module-item-dot" style="background:var(--muted)"></div><span><code>mock_deps_with_nft_querier()</code></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSTANTIATE MSG -->
+    <div class="section-title" id="instantiate">🚀 InstantiateMsg</div>
+    <div class="card">
+      <div class="config-grid">
+        <div class="config-field"><div class="config-field-name">admin</div><div class="config-field-type">Option&lt;String&gt;</div><div class="config-field-default">→ defaults to sender</div></div>
+        <div class="config-field"><div class="config-field-name">mad_scientist_collection</div><div class="config-field-type">String (required)</div><div class="config-field-default">Standard Mad NFT CW721 addr</div></div>
+        <div class="config-field"><div class="config-field-name">mega_mad_scientist_collection</div><div class="config-field-type">String (required)</div><div class="config-field-default">Cosmic NFT CW721 addr</div></div>
+        <div class="config-field"><div class="config-field-name">default_min_bid</div><div class="config-field-type">Option&lt;u64&gt;</div><div class="config-field-default">default: 1 · must be ≥ 1</div></div>
+        <div class="config-field"><div class="config-field-name">anti_snipe_window</div><div class="config-field-type">Option&lt;u64&gt; secs</div><div class="config-field-default">default: 300 (5 min)</div></div>
+        <div class="config-field"><div class="config-field-name">anti_snipe_extension</div><div class="config-field-type">Option&lt;u64&gt; secs</div><div class="config-field-default">default: 300 (5 min)</div></div>
+        <div class="config-field"><div class="config-field-name">max_extension</div><div class="config-field-type">Option&lt;u64&gt; secs</div><div class="config-field-default">default: 86400 (24 hrs)</div></div>
+        <div class="config-field"><div class="config-field-name">max_bidders_per_auction</div><div class="config-field-type">Option&lt;u64&gt;</div><div class="config-field-default">default: 100 · 0 = unlimited</div></div>
+        <div class="config-field"><div class="config-field-name">max_staging_size</div><div class="config-field-type">Option&lt;u64&gt;</div><div class="config-field-default">default: 50 · 0 = unlimited</div></div>
+        <div class="config-field"><div class="config-field-name">max_nfts_per_bid</div><div class="config-field-type">Option&lt;u64&gt;</div><div class="config-field-default">default: 50 · 0 = unlimited</div></div>
+      </div>
+      <div class="note" style="margin-top:12px;margin-bottom:0">
+        <strong>Validation on instantiate:</strong> <code>default_min_bid ≥ 1</code> · addresses must be valid bech32 · standard collection ≠ cosmic collection
+      </div>
+    </div>
+
+    <!-- EXECUTE MSG -->
+    <div class="section-title" id="execute">⚡ ExecuteMsg Variants</div>
+    <div class="grid-2">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.07em">🏷 Auction Module</div>
+        <div class="msg-box bg-blue">
+          <span class="msg-label" style="background:var(--blue-dim);color:var(--blue)">ReceiveNft</span>
+          <div><div style="font-weight:600;">CW721 hook — routes NFTs to bid/deposit/swap</div><div class="msg-desc">Wraps ReceiveNftAction: Bid | DepositMega | SwapDeposit. Funds guard: rejects any native tokens.</div></div>
+        </div>
+        <div class="msg-box">
+          <span class="msg-label" style="background:var(--surface);color:var(--green)">FinalizeAuction</span>
+          <div><div style="font-weight:600;">{ auction_id: u64 }</div><div class="msg-desc">Callable by anyone after end_time. Transfers Cosmic to winner; moves winner NFTs to pool; sets status → Finalizing.</div></div>
+        </div>
+        <div class="msg-box">
+          <span class="msg-label" style="background:var(--surface);color:var(--green)">WithdrawBid</span>
+          <div><div style="font-weight:600;">{ auction_id: u64 }</div><div class="msg-desc">Self-claim: losers withdraw their own escrowed NFTs. Only when Finalizing or Cancelled.</div></div>
+        </div>
+        <div class="msg-box">
+          <span class="msg-label" style="background:var(--surface);color:var(--red)">CancelAuction</span>
+          <div><div style="font-weight:600;">{ auction_id: u64 } 🔐 admin</div><div class="msg-desc">Only if zero bidders. Returns Cosmic to original depositor.</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;text-transform:uppercase;letter-spacing:0.07em">🔄 Swap Pool Module</div>
+        <div class="msg-box">
+          <span class="msg-label" style="background:var(--surface);color:var(--orange)">ClaimSwap</span>
+          <div><div style="font-weight:600;">{ requested_ids: Vec&lt;String&gt; }</div><div class="msg-desc">After SwapDeposit, claim N pool tokens for N staged tokens. Strict 1:1 ratio, no overlap, no dupes.</div></div>
+        </div>
+        <div class="msg-box">
+          <span class="msg-label" style="background:var(--surface);color:var(--orange)">WithdrawStaged</span>
+          <div><div style="font-weight:600;">{ }</div><div class="msg-desc">Cancel a pending swap. Returns all staged tokens to caller.</div></div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.07em">🔐 Admin Controls</div>
+        <div class="msg-box bg-yellow">
+          <span class="msg-label" style="background:var(--yellow-dim);color:var(--yellow)">SetPaused</span>
+          <div><div style="font-weight:600;">{ paused: bool } 🔐 admin</div><div class="msg-desc">Freezes/unfreezes all ReceiveNft operations. Withdrawals remain available.</div></div>
+        </div>
+        <div class="msg-box bg-yellow">
+          <span class="msg-label" style="background:var(--yellow-dim);color:var(--yellow)">ProposeAdmin</span>
+          <div><div style="font-weight:600;">{ new_admin: String } 🔐 admin</div><div class="msg-desc">Step 1 of two-step admin transfer. Sets pending_admin.</div></div>
+        </div>
+        <div class="msg-box bg-yellow">
+          <span class="msg-label" style="background:var(--yellow-dim);color:var(--yellow)">AcceptAdmin</span>
+          <div><div style="font-weight:600;">{ } 🔐 pending_admin</div><div class="msg-desc">Step 2: clears pending_admin, promotes caller to admin.</div></div>
+        </div>
+        <div class="msg-box bg-yellow">
+          <span class="msg-label" style="background:var(--yellow-dim);color:var(--yellow)">ForceCompleteAuction</span>
+          <div><div style="font-weight:600;">{ auction_id: u64 } 🔐 admin</div><div class="msg-desc">Unsticks a Finalizing auction when losers refuse to withdraw. Sets status → Completed.</div></div>
+        </div>
+        <div class="msg-box bg-yellow">
+          <span class="msg-label" style="background:var(--yellow-dim);color:var(--yellow)">UpdateConfig</span>
+          <div><div style="font-weight:600;">7 optional fields 🔐 admin</div><div class="msg-desc">Patch any config value except admin address (use ProposeAdmin for that). Validates default_min_bid ≥ 1.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUERY MSG -->
+    <div class="section-title" id="query">🔍 QueryMsg Variants</div>
+    <div class="grid-2">
+      <div>
+        <div class="msg-box"><span class="msg-label" style="background:var(--surface);color:var(--purple)">GetConfig</span><div><div class="msg-desc">Returns all 12 config fields including paused, pending_admin.</div></div></div>
+        <div class="msg-box"><span class="msg-label" style="background:var(--surface);color:var(--purple)">GetAuction</span><div><div class="msg-desc">{ auction_id } → AuctionResponse { auction, bids[] }</div></div></div>
+        <div class="msg-box"><span class="msg-label" style="background:var(--surface);color:var(--purple)">GetAllAuctions</span><div><div class="msg-desc">{ status?, start_after?, limit? } → paginated list, filterable by AuctionStatus</div></div></div>
+        <div class="msg-box"><span class="msg-label" style="background:var(--surface);color:var(--purple)">GetBids</span><div><div class="msg-desc">{ auction_id, start_after?, limit? } → paginated bids for an auction</div></div></div>
+      </div>
+      <div>
+        <div class="msg-box"><span class="msg-label" style="background:var(--surface);color:var(--purple)">GetUserBid</span><div><div class="msg-desc">{ auction_id, bidder } → BidResponse { bid: Option&lt;Bid&gt; }</div></div></div>
+        <div class="msg-box"><span class="msg-label" style="background:var(--surface);color:var(--purple)">GetPoolContents</span><div><div class="msg-desc">{ start_after?, limit? } → paginated list of token_ids in pool</div></div></div>
+        <div class="msg-box"><span class="msg-label" style="background:var(--surface);color:var(--purple)">GetPoolSize</span><div><div class="msg-desc">O(1) — returns POOL_SIZE counter directly (no iteration)</div></div></div>
+        <div class="msg-box"><span class="msg-label" style="background:var(--surface);color:var(--purple)">GetSwapStaging</span><div><div class="msg-desc">{ user } → SwapStagingResponse with staged token_ids</div></div></div>
+      </div>
+    </div>
+
+    <!-- RECEIVE NFT ROUTER -->
+    <div class="section-title" id="receive-nft">📨 ReceiveNft Action Router</div>
+    <div class="card">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">All NFT deposits enter via CW721 <code>SendNft</code> → <code>ReceiveNft</code> hook. The inner <code>msg</code> field carries a <code>ReceiveNftAction</code> that routes the call.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="card" style="margin-bottom:0;border-color:#3fb95055">
+          <div class="card-title c-green">📦 ReceiveNftAction::Bid</div>
+          <div style="font-size:11px;color:var(--muted)">
+            <div>Sender must be <code>mad_scientist_collection</code></div>
+            <div style="margin-top:6px">→ <code>execute_receive_bid()</code></div>
+            <div style="margin-top:6px;color:var(--text)">Checks: auction Active, within time window, max_bidders cap, max_nfts_per_bid cap, no dup token</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0;border-color:#bc8cff55">
+          <div class="card-title c-purple">🏆 ReceiveNftAction::DepositMega</div>
+          <div style="font-size:11px;color:var(--muted)">
+            <div>Sender must be <code>mega_mad_scientist_collection</code></div>
+            <div>NFT sender must be <code>admin</code></div>
+            <div style="margin-top:6px">→ <code>execute_create_auction()</code></div>
+            <div style="margin-top:6px;color:var(--text)">Creates Auction record, sets ACTIVE_MEGA_AUCTIONS guard</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0;border-color:#f0883e55">
+          <div class="card-title c-orange">🔄 ReceiveNftAction::SwapDeposit</div>
+          <div style="font-size:11px;color:var(--muted)">
+            <div>Sender must be <code>mad_scientist_collection</code></div>
+            <div style="margin-top:6px">→ <code>execute_swap_deposit()</code></div>
+            <div style="margin-top:6px;color:var(--text)">Stages token in SWAP_STAGING. Enforces max_staging_size cap.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE / STORAGE -->
+    <div class="section-title" id="state">💾 State / Storage</div>
+    <div class="card">
+      <table class="storage-table">
+        <thead>
+          <tr><th>Key</th><th>Type</th><th>Storage Key</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>CONFIG</code></td><td><code>Item&lt;Config&gt;</code></td><td><code>"config"</code></td><td>All contract configuration</td></tr>
+          <tr><td><code>NEXT_AUCTION_ID</code></td><td><code>Item&lt;u64&gt;</code></td><td><code>"next_auction_id"</code></td><td>Auto-incrementing auction counter, starts at 1</td></tr>
+          <tr><td><code>AUCTIONS</code></td><td><code>Map&lt;u64, Auction&gt;</code></td><td><code>"auctions"</code></td><td>auction_id → Auction struct</td></tr>
+          <tr><td><code>BIDS</code></td><td><code>Map&lt;(u64, &amp;Addr), Bid&gt;</code></td><td><code>"bids"</code></td><td>(auction_id, bidder) → Bid. Deleted on withdrawal.</td></tr>
+          <tr><td><code>ESCROW</code></td><td><code>Map&lt;(u64, &amp;Addr), Vec&lt;String&gt;&gt;</code></td><td><code>"escrow"</code></td><td>(auction_id, bidder) → token IDs held in escrow. Deleted on withdrawal.</td></tr>
+          <tr><td><code>POOL</code></td><td><code>Map&lt;&amp;str, ()&gt;</code></td><td><code>"pool"</code></td><td>Set of token IDs in the swap pool. O(1) has() checks.</td></tr>
+          <tr><td><code>POOL_SIZE</code></td><td><code>Item&lt;u64&gt;</code></td><td><code>"pool_size"</code></td><td>O(1) pool counter. Avoids full iteration for size queries.</td></tr>
+          <tr><td><code>ACTIVE_MEGA_AUCTIONS</code></td><td><code>Map&lt;&amp;str, u64&gt;</code></td><td><code>"active_mega"</code></td><td>mega_token_id → auction_id guard. Prevents duplicate auctions per token.</td></tr>
+          <tr><td><code>SWAP_STAGING</code></td><td><code>Map&lt;&amp;Addr, Vec&lt;String&gt;&gt;</code></td><td><code>"swap_staging"</code></td><td>user → staged token IDs. Cleared on ClaimSwap or WithdrawStaged.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CONFIG STRUCT -->
+    <div class="section-title" id="config">⚙️ Config Struct Fields</div>
+    <div class="card">
+      <div class="config-grid">
+        <div class="config-field"><div class="config-field-name">admin</div><div class="config-field-type">Addr</div><div class="config-field-default">Contract administrator</div></div>
+        <div class="config-field"><div class="config-field-name">pending_admin</div><div class="config-field-type">Option&lt;Addr&gt;</div><div class="config-field-default">Two-step transfer queue</div></div>
+        <div class="config-field"><div class="config-field-name">paused</div><div class="config-field-type">bool</div><div class="config-field-default">Blocks all ReceiveNft ops</div></div>
+        <div class="config-field"><div class="config-field-name">mad_scientist_collection</div><div class="config-field-type">Addr</div><div class="config-field-default">Regular NFT CW721</div></div>
+        <div class="config-field"><div class="config-field-name">mega_mad_scientist_collection</div><div class="config-field-type">Addr</div><div class="config-field-default">1-of-1 NFT CW721</div></div>
+        <div class="config-field"><div class="config-field-name">default_min_bid</div><div class="config-field-type">u64 ≥ 1</div><div class="config-field-default">NFTs needed to qualify</div></div>
+        <div class="config-field"><div class="config-field-name">anti_snipe_window</div><div class="config-field-type">u64 (secs)</div><div class="config-field-default">Trigger window before end</div></div>
+        <div class="config-field"><div class="config-field-name">anti_snipe_extension</div><div class="config-field-type">u64 (secs)</div><div class="config-field-default">Time added when triggered</div></div>
+        <div class="config-field"><div class="config-field-name">max_extension</div><div class="config-field-type">u64 (secs)</div><div class="config-field-default">Cap on total anti-snipe extension</div></div>
+        <div class="config-field"><div class="config-field-name">max_bidders_per_auction</div><div class="config-field-type">u64 (0=∞)</div><div class="config-field-default">Storage exhaust guard</div></div>
+        <div class="config-field"><div class="config-field-name">max_staging_size</div><div class="config-field-type">u64 (0=∞)</div><div class="config-field-default">Per-user staging cap</div></div>
+        <div class="config-field"><div class="config-field-name">max_nfts_per_bid</div><div class="config-field-type">u64 (0=∞)</div><div class="config-field-default">Per-bidder escrow cap</div></div>
+      </div>
+    </div>
+
+    <!-- AUCTION STRUCT -->
+    <div class="section-title" id="auction-struct">🏷 Auction Struct</div>
+    <div class="card">
+      <table class="storage-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>auction_id</code></td><td><code>u64</code></td><td>Auto-assigned from NEXT_AUCTION_ID</td></tr>
+          <tr><td><code>mega_token_id</code></td><td><code>String</code></td><td>The Cosmic NFT being auctioned</td></tr>
+          <tr><td><code>start_time</code></td><td><code>u64</code> (secs)</td><td>Block time when bidding opens</td></tr>
+          <tr><td><code>end_time</code></td><td><code>u64</code> (secs)</td><td>Current end — may be extended by anti-snipe</td></tr>
+          <tr><td><code>original_end_time</code></td><td><code>u64</code> (secs)</td><td>Original end; used to cap max_extension</td></tr>
+          <tr><td><code>status</code></td><td><code>AuctionStatus</code></td><td>Active → Finalizing → Completed | Cancelled</td></tr>
+          <tr><td><code>min_bid</code></td><td><code>u64</code></td><td>Per-auction minimum (overrides config default)</td></tr>
+          <tr><td><code>highest_bid_count</code></td><td><code>u64</code></td><td>Number of NFTs in winning bid</td></tr>
+          <tr><td><code>highest_bidder</code></td><td><code>Option&lt;Addr&gt;</code></td><td>Current leader (None if no qualifying bids)</td></tr>
+          <tr><td><code>highest_bid_time</code></td><td><code>u64</code></td><td>Timestamp of leading bid (tie-breaking: earlier wins)</td></tr>
+          <tr><td><code>total_bidders</code></td><td><code>u64</code></td><td>Unique bidder count (any escrow deposit). Used to gate cancellation.</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+        <strong>AuctionStatus:</strong>
+        <span class="badge badge-green">Active</span>
+        <span class="badge" style="background:var(--yellow-dim);color:var(--yellow);border-color:#e3b34144">Finalizing</span>
+        <span class="badge" style="background:var(--blue-dim);color:var(--blue);border-color:#58a6ff44">Completed</span>
+        <span class="badge" style="background:var(--red-dim);color:var(--red);border-color:#ff7b7244">Cancelled</span>
+      </div>
+    </div>
+
+    <!-- AUCTION FLOW -->
+    <div class="section-title" id="flow-auction">🔄 Auction Lifecycle</div>
+    <div class="card">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-box bg-purple" style="color:var(--purple)">Admin</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-purple" style="color:var(--purple)">SendNft<br><small>DepositMega</small></div>
+          <div class="flow-label">from Cosmic collection</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-green" style="color:var(--green)">Auction<br><small>Active</small></div>
+          <div class="flow-label">create_auction()</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-blue" style="color:var(--blue)">Bidders<br><small>SendNft × N</small></div>
+          <div class="flow-label">receive_bid() × N</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-orange" style="color:var(--orange)">FinalizeAuction<br><small>anyone, after end</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box" style="background:var(--yellow-dim);color:var(--yellow);border:1px solid #e3b34155">Finalizing<br><small>winner got Cosmic</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-blue" style="color:var(--blue)">Losers<br><small>WithdrawBid</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-green" style="color:var(--green)">Completed<br><small>or ForceComplete</small></div>
+        </div>
+      </div>
+      <div class="note" style="margin-top:12px;margin-bottom:0">
+        <strong>Anti-snipe:</strong> If a qualifying bid arrives within <code>anti_snipe_window</code> seconds of <code>end_time</code>, the end is extended by <code>anti_snipe_extension</code> seconds, capped at <code>original_end_time + max_extension</code>.
+      </div>
+    </div>
+
+    <!-- SWAP FLOW -->
+    <div class="section-title" id="flow-swap">🔄 Swap Pool Lifecycle</div>
+    <div class="card">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-box bg-orange" style="color:var(--orange)">Auction<br><small>Finalized</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-orange" style="color:var(--orange)">Winner's NFTs<br><small>→ POOL</small></div>
+          <div class="flow-label">finalize_auction()</div>
+        </div>
+        <div class="flow-arrow">  </div>
+        <div class="flow-step">
+          <div class="flow-box bg-blue" style="color:var(--blue)">User<br><small>SendNft × N</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-teal" style="color:var(--teal)">SWAP_STAGING<br><small>staged tokens</small></div>
+          <div class="flow-label">swap_deposit()</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-teal" style="color:var(--teal)">ClaimSwap<br><small>{ requested_ids }</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box bg-green" style="color:var(--green)">Swap Complete<br><small>1:1 exchange</small></div>
+          <div class="flow-label">pool size unchanged</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px">
+        Pool size is always preserved: N staged tokens enter, N requested tokens leave. Users can cancel staging with <strong>WithdrawStaged</strong>.
+      </div>
+    </div>
+
+    <!-- ERRORS -->
+    <div class="section-title" id="errors">❌ Error Types (30 variants)</div>
+    <div class="error-list">
+      <div class="error-item"><div class="error-name">Unauthorized</div><div class="error-desc">Only admin can perform this action</div></div>
+      <div class="error-item"><div class="error-name">AuctionNotFound</div><div class="error-desc">auction_id does not exist</div></div>
+      <div class="error-item"><div class="error-name">AuctionNotActive</div><div class="error-desc">Auction is not in Active state</div></div>
+      <div class="error-item"><div class="error-name">AuctionNotEnded</div><div class="error-desc">Cannot finalize before end_time</div></div>
+      <div class="error-item"><div class="error-name">AuctionAlreadyEnded</div><div class="error-desc">Cannot bid after end_time</div></div>
+      <div class="error-item"><div class="error-name">AuctionNotStarted</div><div class="error-desc">Cannot bid before start_time</div></div>
+      <div class="error-item"><div class="error-name">BidBelowMinimum</div><div class="error-desc">Bid count below auction min_bid</div></div>
+      <div class="error-item"><div class="error-name">BidNotHighEnough</div><div class="error-desc">Doesn't exceed current highest</div></div>
+      <div class="error-item"><div class="error-name">InvalidAuctionTimes</div><div class="error-desc">start_time ≥ end_time</div></div>
+      <div class="error-item"><div class="error-name">SwapLengthMismatch</div><div class="error-desc">Offered/requested lists differ in length</div></div>
+      <div class="error-item"><div class="error-name">SwapEmpty</div><div class="error-desc">Empty swap lists</div></div>
+      <div class="error-item"><div class="error-name">SwapCountMismatch</div><div class="error-desc">staged N ≠ requested M</div></div>
+      <div class="error-item"><div class="error-name">SwapOverlap</div><div class="error-desc">Token in both offered and requested</div></div>
+      <div class="error-item"><div class="error-name">TokenNotInPool</div><div class="error-desc">Requested token not available</div></div>
+      <div class="error-item"><div class="error-name">DuplicateTokenId</div><div class="error-desc">Same token appears twice</div></div>
+      <div class="error-item"><div class="error-name">UnexpectedCollection</div><div class="error-desc">NFT from wrong CW721 contract</div></div>
+      <div class="error-item"><div class="error-name">InvalidReceiveMsg</div><div class="error-desc">Malformed ReceiveNftAction payload</div></div>
+      <div class="error-item"><div class="error-name">NoBids</div><div class="error-desc">No bids on this auction</div></div>
+      <div class="error-item"><div class="error-name">NotTokenOwner</div><div class="error-desc">Caller doesn't own token</div></div>
+      <div class="error-item"><div class="error-name">MegaNotEscrowed</div><div class="error-desc">Cosmic NFT not held by contract</div></div>
+      <div class="error-item"><div class="error-name">DuplicateMegaAuction</div><div class="error-desc">Active auction already exists for this Cosmic</div></div>
+      <div class="error-item"><div class="error-name">CannotCancelWithBids</div><div class="error-desc">total_bidders > 0</div></div>
+      <div class="error-item"><div class="error-name">WithdrawNotAllowed</div><div class="error-desc">Must be Finalizing or Cancelled</div></div>
+      <div class="error-item"><div class="error-name">NothingToWithdraw</div><div class="error-desc">No escrow for this bidder</div></div>
+      <div class="error-item"><div class="error-name">NoStagedTokens</div><div class="error-desc">No tokens in swap staging</div></div>
+      <div class="error-item"><div class="error-name">ContractPaused</div><div class="error-desc">All ReceiveNft ops blocked</div></div>
+      <div class="error-item"><div class="error-name">NoPendingAdmin</div><div class="error-desc">No admin transfer in progress</div></div>
+      <div class="error-item"><div class="error-name">NotPendingAdmin</div><div class="error-desc">Only pending admin can accept</div></div>
+      <div class="error-item"><div class="error-name">MaxBiddersReached</div><div class="error-desc">Auction full (max_bidders_per_auction)</div></div>
+      <div class="error-item"><div class="error-name">StagingLimitReached</div><div class="error-desc">max_staging_size reached</div></div>
+      <div class="error-item"><div class="error-name">NotFinalizing</div><div class="error-desc">ForceComplete requires Finalizing status</div></div>
+      <div class="error-item"><div class="error-name">InvalidConfig</div><div class="error-desc">Config validation failure (with reason)</div></div>
+      <div class="error-item"><div class="error-name">FundsNotAllowed</div><div class="error-desc">Native tokens attached to message</div></div>
+      <div class="error-item"><div class="error-name">CollectionAddressCollision</div><div class="error-desc">Standard and Cosmic collection addresses are identical</div></div>
+      <div class="error-item"><div class="error-name">MaxEscrowPerBidder</div><div class="error-desc">max_nfts_per_bid reached</div></div>
+    </div>
+
+    <!-- HARDENING -->
+    <div class="section-title" id="hardening">🔒 Security Hardening — All Fixes</div>
+
+    <div class="note">All 16 findings fixed across two hardening passes. 62 tests covering all security-critical paths.</div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.07em">Pass 1 — Admin &amp; Economics (6 fixes)</div>
+    <div class="audit-row">
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--green)"></div><strong>total_bidders counter</strong> — tracks unique bidders (not top bids) to correctly gate cancellation</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--green)"></div><strong>Pause mechanism</strong> — SetPaused freezes all ReceiveNft; withdrawals unaffected</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--green)"></div><strong>Two-step admin transfer</strong> — ProposeAdmin + AcceptAdmin prevents lockout from typo</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--green)"></div><strong>Max bidders cap</strong> — max_bidders_per_auction prevents storage exhaustion griefing</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--green)"></div><strong>Force complete</strong> — admin can unstick Finalizing auctions if losers ghost</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--green)"></div><strong>Staging size cap</strong> — max_staging_size limits unbounded SWAP_STAGING growth</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;text-transform:uppercase;letter-spacing:0.07em">Pass 2 — Web Research / OWASP / Oak Security (5 fixes)</div>
+    <div class="audit-row">
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--blue)"></div><strong>Funds rejection guard</strong> — execute() rejects any native tokens; prevents stuck funds</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--blue)"></div><strong>Collection collision check</strong> — instantiate() rejects if both collections share same address</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--blue)"></div><strong>Per-bidder escrow cap</strong> — max_nfts_per_bid prevents one user bloating storage</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--blue)"></div><strong>min_bid ≥ 1 validation</strong> — instantiate + create_auction + update_config all enforce</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--blue)"></div><strong>Overflow-checks in dev profile</strong> — Cargo.toml: overflow-checks = true catches u64 wraps in tests</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;text-transform:uppercase;letter-spacing:0.07em">Original Audit Fixes (11 from initial security audit)</div>
+    <div class="audit-row">
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>NFT escrow via CW721 SendNft hook only (no direct transfer)</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>Self-claim withdrawal pattern (no loop over all losers)</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>Two-phase swap: deposit then claim (prevents race condition)</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>Self-claim withdrawal (no gas bomb from loop)</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>Anti-snipe capped by max_extension</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>ACTIVE_MEGA_AUCTIONS guard (no duplicate auctions per token)</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>Cancel only before any bids</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>Tie-breaking: earlier bidder keeps lead on equal bids</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>Storage cleanup on withdrawal (ESCROW + BIDS removed)</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>O(1) pool size counter (no iteration)</div>
+      <div class="audit-chip"><div class="audit-chip-dot" style="background:var(--purple)"></div>Swap events as attributes (not on-chain storage)</div>
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>

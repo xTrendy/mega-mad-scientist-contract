@@ -1,0 +1,35 @@
+name: repeat-regression
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+
+jobs:
+  repeat-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run repeat regression harness
+        run: |
+          ITERATIONS=15 \
+          CRITICAL_REPEAT=5 \
+          ./ci_repeat_regression.sh
+
+      - name: Upload repeat regression artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repeat-regression-logs-${{ github.run_id }}
+          path: logs/ci_repeat
+          if-no-files-found: warn

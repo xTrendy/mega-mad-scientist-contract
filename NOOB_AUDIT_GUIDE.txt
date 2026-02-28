@@ -1,0 +1,543 @@
+Cosmic Mad Scientist Contract - 3-in-1 Noob Audit Pack
+Generated: 2026-02-27
+Project path:
+/Users/trendy/Mega Mad Scientists Smart Contract/mega-mad-scientist-contract
+
+=======================================================================
+HOW TO USE THIS FILE
+=======================================================================
+This file contains 3 versions of the same contract explanation:
+
+1) SIMPLE MODE (no code brain needed)
+2) VISUAL MODE (flow diagrams)
+3) DEEP MODE (snippet + line references)
+
+Read in order if you are brand new.
+If you already understand the basics, jump to section 3.
+
+Terminology note:
+- "Cosmic" = the 1-of-1 prize collection.
+- "Standard Mad" = the original bid/swap collection.
+- Some code identifiers still use legacy `mega_*` names for compatibility.
+
+
+#######################################################################
+# 1) SIMPLE MODE
+#######################################################################
+
+=======================================================================
+1.1 What this contract does (plain words)
+=======================================================================
+This contract runs auctions for Cosmic Mad Scientist NFTs.
+
+- People bid using Standard Mad Scientist NFTs.
+- Highest qualifying bid wins the Cosmic.
+- Winner's Standard NFTs go into a pool.
+- People can later swap with that pool 1:1.
+
+Think of it like:
+- "Cosmic" = prize
+- "Standard Mad" = bidding chips
+- "Pool" = community inventory of chips from winners
+
+
+=======================================================================
+1.2 Who can do what
+=======================================================================
+Normal users can:
+- Bid on auctions (with Standard Mad NFTs)
+- Withdraw losing bids
+- Swap with pool
+
+Admin can:
+- Create Cosmic auctions (by depositing Cosmic)
+- Pause/unpause deposits
+- Update config limits
+- Force complete stuck finalizing auction
+- Transfer admin role (two-step)
+
+
+=======================================================================
+1.3 The two most important trust checks
+=======================================================================
+A) No double-dipping
+- Same Standard Mad NFT cannot be used to bid in two live auctions.
+
+B) No winner / bad case safety
+- If no valid winner exists, Cosmic goes back to original depositor.
+- Not "whoever is admin now", but who originally deposited Cosmic.
+
+
+=======================================================================
+1.4 What happens in each outcome
+=======================================================================
+Case A: Auction has winner
+- Winner gets Cosmic.
+- Winner's Standard Mad NFTs go into pool.
+- Losers withdraw their own NFTs back.
+
+Case B: Auction ends with no qualifying winner
+- Cosmic returns to original depositor.
+- Bidders can still withdraw escrowed NFTs.
+
+Case C: Admin cancels before bids
+- Cosmic returns to original depositor.
+
+
+=======================================================================
+1.5 What can go wrong and how contract responds
+=======================================================================
+- Wrong collection sends NFT -> rejected.
+- Bid before start or after end -> rejected.
+- Trying to reuse a bid NFT across auctions -> rejected.
+- Trying to cancel after bidders joined -> rejected.
+- Sending ATOM/native funds with execute msg -> rejected.
+- Contract paused -> new deposits/bids rejected.
+
+
+=======================================================================
+1.6 One-screen "is this sound?" checklist
+=======================================================================
+[ ] Same bid NFT cannot appear in two live auctions.
+[ ] Winner gets Cosmic only after finalize and after end time.
+[ ] No winner returns Cosmic to original depositor.
+[ ] Losers can withdraw in Finalizing/Completed.
+[ ] Cancel only works before any bidder joined.
+[ ] Swap is strictly 1:1 (deposit N, claim N).
+[ ] Admin controls are restricted and reversible (two-step transfer).
+
+
+#######################################################################
+# 2) VISUAL MODE
+#######################################################################
+
+=======================================================================
+2.1 Big-picture map
+=======================================================================
+
++---------------------------+
+| Admin deposits Cosmic NFT   |
+| (creates auction)         |
++------------+--------------+
+             |
+             v
++---------------------------+
+| Auction is Active         |
+| users send bid NFTs       |
++------------+--------------+
+             |
+             v
++---------------------------+
+| Auction end reached       |
+| finalize_auction called   |
++------------+--------------+
+             |
+      +------+------+
+      |             |
+      v             v
++-----------+   +-------------------+
+| Winner    |   | No winner         |
+| exists    |   | (or below min)    |
++-----+-----+   +---------+---------+
+      |                   |
+      v                   v
++-----------+      +------------------------+
+| Cosmic ->   |      | Cosmic -> original       |
+| winner    |      | depositor              |
++-----+-----+      +------------------------+
+      |
+      v
++-----------------------------+
+| Winner bid NFTs -> Pool     |
+| Losers withdraw their own   |
++-----------------------------+
+
+
+=======================================================================
+2.2 Auction state machine
+=======================================================================
+
+[Active]
+  | finalize with winner
+  v
+[Finalizing]
+  | losers withdraw (or admin force complete)
+  v
+[Completed]
+
+[Active] --cancel before bids--> [Cancelled]
+[Active] --finalize no winner--> [Completed]
+
+Withdraw allowed in:
+- Finalizing
+- Completed
+- Cancelled
+
+
+=======================================================================
+2.3 NFT movement diagram
+=======================================================================
+
+Auction creation:
+Admin wallet --(Send Cosmic)-> Contract escrow
+
+Bidding:
+User wallet --(Send Standard Mad)-> Contract bid escrow
+
+Finalize with winner:
+Contract --(Transfer Cosmic)-> Winner wallet
+Contract --(Winner bid NFTs)-> Pool storage
+
+Loser withdraw:
+Contract --(Loser bid NFTs)-> Loser wallet
+
+Swap:
+User wallet --(SwapDeposit)-> Contract staging
+Contract pool --(requested tokens)-> User wallet
+Staging tokens --(claim)-> Pool
+
+
+=======================================================================
+2.4 No-double-dip lock visual
+=======================================================================
+
+When token "mad_123" is used in auction #2:
+
+ESCROWED_BID_TOKENS["mad_123"] = 2
+
+If someone tries using mad_123 in auction #4 while lock exists:
+-> reject
+
+Lock removed only when:
+- winner tokens moved to pool
+- or loser withdraw returns token
+
+
+=======================================================================
+2.5 Safety controls map
+=======================================================================
+
+Pause switch:
+- blocks incoming ReceiveNft actions
+- does NOT block existing withdraw paths
+
+Two-step admin:
+- ProposeAdmin(new)
+- AcceptAdmin() by pending admin
+
+ForceComplete:
+- only from Finalizing
+- emergency cleanup when losers do not withdraw
+
+
+#######################################################################
+# 3) DEEP MODE (snippet + line references)
+#######################################################################
+
+=======================================================================
+3.1 Message model
+=======================================================================
+File: src/msg.rs
+
+Snippet (src/msg.rs:35-88)
+------------------------------------------------------------
+ExecuteMsg includes:
+- FinalizeAuction { auction_id }
+- CancelAuction { auction_id }
+- WithdrawBid { auction_id }
+- ClaimSwap { requested_ids }
+- WithdrawStaged {}
+- SetPaused { paused }
+- ProposeAdmin { new_admin }
+- AcceptAdmin {}
+- ForceCompleteAuction { auction_id }
+- UpdateConfig { ... }
+- ReceiveNft(Cw721ReceiveMsg)
+------------------------------------------------------------
+
+Meaning:
+- Main execution path is ReceiveNft.
+- Admin-only ops are explicit.
+
+
+=======================================================================
+3.2 Storage model
+=======================================================================
+File: src/state.rs
+
+Snippet (src/state.rs:104-125)
+------------------------------------------------------------
+AUCTIONS: auction_id -> Auction
+BIDS: (auction_id, bidder) -> Bid
+POOL: token_id set
+POOL_SIZE: counter
+ESCROW: (auction_id, bidder) -> token list
+ESCROWED_BID_TOKENS: token_id -> auction_id
+ACTIVE_MEGA_AUCTIONS: cosmic_token_id -> auction_id
+------------------------------------------------------------
+
+Meaning:
+- Global anti-double-dip lock is ESCROWED_BID_TOKENS.
+- Duplicate Cosmic live auctions blocked by ACTIVE_MEGA_AUCTIONS.
+
+
+=======================================================================
+3.3 Instantiate protections
+=======================================================================
+File: src/contract.rs
+
+Snippet (src/contract.rs:62-75)
+------------------------------------------------------------
+default_min_bid cannot be 0
+standard collection must not equal cosmic collection
+------------------------------------------------------------
+
+Snippet (src/contract.rs:92-94)
+------------------------------------------------------------
+NEXT_AUCTION_ID initialized to 1
+POOL_SIZE initialized to 0
+------------------------------------------------------------
+
+
+=======================================================================
+3.4 Global execute guard
+=======================================================================
+File: src/contract.rs
+
+Snippet (src/contract.rs:120-124)
+------------------------------------------------------------
+if !info.funds.is_empty() -> FundsNotAllowed
+------------------------------------------------------------
+
+Meaning:
+- Native coin attachment rejected.
+
+
+=======================================================================
+3.5 Receive router + pause
+=======================================================================
+File: src/contract.rs
+
+Snippet (src/contract.rs:181-184)
+------------------------------------------------------------
+paused => ContractPaused
+------------------------------------------------------------
+
+Snippet (src/contract.rs:194-236)
+------------------------------------------------------------
+Bid: only Standard collection
+DepositMega: only Cosmic collection + admin sender
+SwapDeposit: only Standard collection
+------------------------------------------------------------
+
+
+=======================================================================
+3.6 Create auction
+=======================================================================
+File: src/contract.rs
+
+Snippet (src/contract.rs:253-267)
+------------------------------------------------------------
+InvalidAuctionTimes if start >= end
+DuplicateMegaAuction if Cosmic already active
+------------------------------------------------------------
+
+Snippet (src/contract.rs:277-290)
+------------------------------------------------------------
+Auction stores depositor, min_bid, status=Active,
+highest fields reset, total_bidders=0
+------------------------------------------------------------
+
+
+=======================================================================
+3.7 Bid logic (critical)
+=======================================================================
+File: src/contract.rs
+
+Timing/status checks (src/contract.rs:322-337)
+- must be active and within start/end window
+
+No-double-dip lock (src/contract.rs:339-349)
+- if token locked in another auction => reject
+- if same auction duplicate => reject
+
+Capacity checks (src/contract.rs:356-377)
+- max bidders per auction
+- max escrow per bidder
+
+Winner rule (src/contract.rs:391-399)
+- must meet min bid
+- must strictly exceed highest (ties do not overtake)
+
+Anti-snipe (src/contract.rs:428-435)
+- extends end time near auction close
+- capped by max_extension
+
+Persist escrow + lock (src/contract.rs:443-446)
+- BIDS save
+- ESCROW save
+- global token lock save
+
+
+=======================================================================
+3.8 Finalize logic
+=======================================================================
+File: src/contract.rs
+
+Finalize gate (src/contract.rs:473-483)
+- only Active and ended auctions can finalize
+
+Winner path (src/contract.rs:487-513)
+- Cosmic transferred to winner
+- winner bid NFTs moved to pool
+- global locks removed for winner tokens
+- winner escrow/bid rows removed
+- status set to Finalizing
+
+No winner path (src/contract.rs:514-524)
+- Cosmic returned to auction.depositor
+- status set Completed
+
+Guard cleanup (src/contract.rs:526-528)
+- ACTIVE_MEGA_AUCTIONS entry removed
+
+
+=======================================================================
+3.9 Withdraw logic
+=======================================================================
+File: src/contract.rs
+
+Allowed statuses (src/contract.rs:560-567)
+- Finalizing / Cancelled / Completed
+
+Cleanup (src/contract.rs:591-597)
+- remove token lock per NFT
+- remove ESCROW and BIDS rows
+
+Meaning:
+- loser recovery works in completed/force-completed scenarios too.
+
+
+=======================================================================
+3.10 Cancel logic
+=======================================================================
+File: src/contract.rs
+
+Snippet (src/contract.rs:620-635)
+------------------------------------------------------------
+admin only
+active only
+blocked if total_bidders > 0
+------------------------------------------------------------
+
+Snippet (src/contract.rs:637-651)
+------------------------------------------------------------
+Cosmic returns to depositor
+ACTIVE_MEGA_AUCTIONS guard removed
+status set Cancelled
+------------------------------------------------------------
+
+
+=======================================================================
+3.11 Swap logic
+=======================================================================
+File: src/contract.rs
+
+Swap deposit (src/contract.rs:673-686)
+- staging cap
+- no duplicates
+
+Claim swap checks (src/contract.rs:719-754)
+- strict 1:1 count
+- requested unique
+- no overlap with staged
+- all requested must be in pool
+
+Claim execution (src/contract.rs:761-779)
+- staged -> pool
+- requested removed from pool and transferred
+- staging cleared
+
+
+=======================================================================
+3.12 Admin controls
+=======================================================================
+File: src/contract.rs
+
+Pause (src/contract.rs:834-839)
+- admin-only pause toggle
+
+Two-step admin (src/contract.rs:860-881)
+- propose then accept
+
+Force complete (src/contract.rs:908-913)
+- only from Finalizing
+
+Update config (src/contract.rs:930-959)
+- admin-only
+- default_min_bid cannot be set to zero
+
+
+=======================================================================
+3.13 Query endpoints
+=======================================================================
+File: src/contract.rs
+
+Routing (src/contract.rs:973-995)
+- GetConfig, GetAuction, GetAllAuctions, GetBids, GetUserBid,
+  GetPoolContents, GetPoolSize, GetSwapStaging
+
+Pagination and lookups:
+- query_all_auctions: src/contract.rs:1028-1056
+- query_bids: src/contract.rs:1058-1079
+- query_pool_contents: src/contract.rs:1087-1104
+
+
+=======================================================================
+3.14 Error translation cheat sheet
+=======================================================================
+File: src/error.rs
+
+Key errors:
+- Unauthorized
+- AuctionNotStarted / AuctionAlreadyEnded / AuctionNotEnded
+- DuplicateMegaAuction
+- TokenAlreadyEscrowedInAuction
+- CannotCancelWithBids
+- WithdrawNotAllowed / NothingToWithdraw
+- ContractPaused
+- FundsNotAllowed
+
+
+=======================================================================
+3.15 Proof via tests you can verify
+=======================================================================
+Unit tests in src/tests.rs:
+- exact start-time bid: line 481
+- exact end-time bid: line 504
+- no double dip across simultaneous auctions: line 528
+- same wallet can win multiple Cosmic auctions with distinct tokens: line 589
+- anti-snipe boundary behavior: line 774
+- no-winner withdrawal path: line 886
+- no-bid depositor return after admin change: line 915
+- force-complete still allows loser withdraw: line 1900
+
+Integration tests in tests/integration.rs:
+- 5 simultaneous Cosmic auctions + no double dip: line 556
+- finalize atomicity on forced transfer failure: line 653
+- withdraw atomicity on forced transfer failure: line 696
+
+Fuzz tests:
+- stateful single-auction invariants: src/stateful_fuzz.rs
+- multi-auction lock invariants: src/stateful_fuzz.rs
+
+
+=======================================================================
+FINAL NOTE
+=======================================================================
+If you only check 3 things as a non-coder, check these:
+1) no-double-dip lock exists and is cleared correctly,
+2) no-winner returns Cosmic to original depositor,
+3) losers can always recover escrow after finalization paths.
+
+This contract currently does all three.
