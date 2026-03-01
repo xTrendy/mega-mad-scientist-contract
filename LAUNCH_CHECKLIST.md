@@ -6,6 +6,7 @@
 - [ ] Run `./rehearse.sh` (or `./rehearse.sh --full`).
 - [ ] Run `./security_stress.sh` (or `PROPTEST_CASES=2000 ./security_stress.sh`).
 - [ ] Run `./ci_repeat_regression.sh` (or tuned `ITERATIONS=50 CRITICAL_REPEAT=20 ./ci_repeat_regression.sh`).
+- [ ] Run either `WASM_RUST_TOOLCHAIN=stable ./localnet_two_node_e2e.sh` (one-command localnet) or `WASM_RUST_TOOLCHAIN=stable CW721_WASM=/absolute/path/to/cw721_base.wasm AUCTION_WASM=/absolute/path/to/mega_mad_scientist.wasm FORCE_AUCTION_REBUILD=false ./localnet_e2e.sh` against a live local `wasmd` node (if overriding `CW721_WASM`, use a `cw721-base` artifact compatible with this repo's `cw721/cw721-base` dependency line, currently `v0.21.0`; prefer optimizer-built auction wasm artifact when validator feature support is strict).
 - [ ] Run `cargo fmt`.
 - [ ] Run `cargo test`.
 - [ ] Run `cargo clippy --all-targets --all-features -- -D warnings`.

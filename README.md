@@ -30,7 +30,7 @@ cargo schema
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/optimizer:0.15.0
+  cosmwasm/optimizer:0.17.0
 ```
 
 ## One-Command Rehearsal
@@ -75,6 +75,65 @@ Optional: tune runtime intensity.
 ITERATIONS=50 CRITICAL_REPEAT=20 ./ci_repeat_regression.sh
 ```
 
+## Real Local-Chain E2E Harness (wasmd)
+
+Runs a live on-chain flow against a running local `wasmd` node:
+
+- store/instantiate `cw721-base` + auction contracts
+- mint Standard/Cosmic NFTs
+- create auction via CW721 `send_nft` hook
+- place bids, finalize, loser withdraw
+- swap staging + claim
+
+```bash
+# Required:
+# 1) local wasmd node is already running and funded keys exist
+# 2) cw721-base wasm path is available
+WASM_RUST_TOOLCHAIN=stable \
+CW721_WASM=/absolute/path/to/cw721_base.wasm \
+./localnet_e2e.sh
+```
+
+Useful overrides:
+
+```bash
+WASM_RUST_TOOLCHAIN=stable \
+CHAIN_ID=localwasm \
+NODE=http://127.0.0.1:26657 \
+WASMD_HOME=$HOME/.wasmd \
+ADMIN_KEY=admin BIDDER1_KEY=bidder1 BIDDER2_KEY=bidder2 \
+CW721_WASM=/absolute/path/to/cw721_base.wasm \
+./localnet_e2e.sh
+```
+
+## One-Command Two-Node Localnet + E2E
+
+Boots a 2-node local `wasmd` network, runs full E2E, then shuts it down.
+
+```bash
+WASM_RUST_TOOLCHAIN=stable ./localnet_two_node_e2e.sh
+```
+
+By default, this script auto-downloads a prebuilt, validator-compatible `cw721_base.wasm` release artifact pinned to `public-awesome/cw-nfts v0.21.0` (matching this repo's CW721/CosmWasm dependency line). Override with `CW721_WASM=/path/to/cw721_base.wasm` or `CW721_RELEASE_URL=...` if needed.
+
+For auction wasm, the script prefers an optimizer-built artifact at `artifacts/mega_mad_scientist.wasm` when available (and will auto-attempt a Docker optimizer build if Docker exists). If no optimizer artifact is available, it falls back to local Rust build.
+
+Optional explicit optimizer build:
+
+```bash
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source=cosmwasm_target_cache,target=/target \
+  --mount type=volume,source=cosmwasm_registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/optimizer:0.17.0
+
+AUCTION_WASM=artifacts/mega_mad_scientist.wasm \
+FORCE_AUCTION_REBUILD=false \
+WASM_RUST_TOOLCHAIN=stable \
+./localnet_two_node_e2e.sh
+```
+
+This is local-only testing. It does not touch Cosmos mainnet or testnet unless you explicitly point scripts at remote RPC endpoints.
+
 ## Contract Messages
 
 ### Instantiate
@@ -95,11 +154,15 @@ Note: documentation uses "Standard" and "Cosmic" terminology, while some wire/AP
 
 | Message | Who | Description |
 |---------|-----|-------------|
-| `CreateAuction` | Admin | Create auction for a Cosmic Mad Scientist |
-| `PlaceBid` | Any holder | Bid Standard Mad Scientists on an auction |
 | `FinalizeAuction` | Anyone (after end) | End auction, distribute NFTs |
-| `CancelAuction` | Admin | Cancel auction, return all NFTs |
-| `SwapFromPool` | Any holder | Swap Standard Mad Scientists 1:1 with pool |
+| `CancelAuction` | Admin | Cancel auction before any bids are placed |
+| `WithdrawBid` | Losing bidder | Withdraw escrowed Standard NFTs after finalize/cancel |
+| `ClaimSwap` | Any holder | Complete 1:1 swap using previously staged NFTs |
+| `WithdrawStaged` | Any holder | Return currently staged swap NFTs to self |
+| `SetPaused` | Admin | Pause/unpause incoming NFT operations |
+| `ProposeAdmin` | Admin | Propose a new admin (step 1 of 2) |
+| `AcceptAdmin` | Pending admin | Accept admin role (step 2 of 2) |
+| `ForceCompleteAuction` | Admin | Force-complete a finalizing auction |
 | `UpdateConfig` | Admin | Update contract settings |
 | `ReceiveNft` | CW721 hook | Routes incoming NFTs |
 
@@ -114,7 +177,7 @@ Note: documentation uses "Standard" and "Cosmic" terminology, while some wire/AP
 | `GetUserBid` | Specific user's bid |
 | `GetPoolContents` | Token IDs in swap pool |
 | `GetPoolSize` | Pool NFT count |
-| `GetSwapHistory` | Recent swap records |
+| `GetSwapStaging` | Token IDs the user has staged for swap |
 
 ## NFT Integration
 
@@ -130,10 +193,20 @@ The contract receives NFTs via the CW721 `Send` mechanism. Embed a `ReceiveNftAc
 { "deposit_mega": { "start_time": 1700000000, "end_time": 1700086400, "min_bid": 2 } }
 ```
 
+**To stage a Standard NFT for swap**:
+```json
+"swap_deposit"
+```
+
+Then call execute:
+```json
+{ "claim_swap": { "requested_ids": ["mad-42", "mad-73"] } }
+```
+
 ## Security Notes
 
 - All bidders' NFTs are escrowed in the contract during auctions
-- Losers' NFTs are returned on finalize/cancel
+- Losing bidders can withdraw escrowed NFTs after finalize/cancel
 - Reentrancy guards via CosmWasm's single-threaded execution model
 - Duplicate token ID detection in bids and swaps
 - Mandatory audit recommended before mainnet deployment
