@@ -25,11 +25,11 @@ pub struct Config {
     /// Maximum total extension allowed beyond original_end_time (caps anti-snipe griefing).
     /// Defaults to 86400 (24 hours).
     pub max_extension: u64,
-    /// Maximum unique bidders per auction (0 = unlimited). Prevents griefing.
+    /// Maximum unique bidders per auction. Prevents griefing.
     pub max_bidders_per_auction: u64,
-    /// Maximum tokens a user can stage for swapping (0 = unlimited). Prevents unbounded storage.
+    /// Maximum tokens a user can stage for swapping. Prevents unbounded storage.
     pub max_staging_size: u64,
-    /// Maximum NFTs a single bidder can escrow per auction (0 = unlimited). Prevents storage bloat.
+    /// Maximum NFTs a single bidder can escrow per auction. Prevents storage bloat.
     pub max_nfts_per_bid: u64,
 }
 

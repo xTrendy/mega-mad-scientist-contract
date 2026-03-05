@@ -1,11 +1,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult, WasmMsg,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Response, StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw721::Cw721ExecuteMsg;
+use cw721::msg::Cw721ExecuteMsg;
+use cw721::receiver::Cw721ReceiveMsg;
 
 use crate::error::ContractError;
 use crate::msg::{
@@ -24,6 +25,10 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // Default pagination limit
 const DEFAULT_LIMIT: u32 = 30;
 const MAX_LIMIT: u32 = 100;
+const MAX_BIDDERS_PER_AUCTION_CAP: u64 = 1_000;
+const MAX_STAGING_SIZE_CAP: u64 = 1_000;
+const MAX_NFTS_PER_BID_CAP: u64 = 1_000;
+type Cw721ExecEmpty = Cw721ExecuteMsg<Empty, Empty, Empty>;
 
 struct UpdateConfigArgs {
     default_min_bid: Option<u64>,
@@ -33,6 +38,20 @@ struct UpdateConfigArgs {
     max_bidders_per_auction: Option<u64>,
     max_staging_size: Option<u64>,
     max_nfts_per_bid: Option<u64>,
+}
+
+fn validate_bounded_positive(field: &str, value: u64, max: u64) -> Result<(), ContractError> {
+    if value == 0 {
+        return Err(ContractError::InvalidConfig {
+            reason: format!("{field} must be >= 1"),
+        });
+    }
+    if value > max {
+        return Err(ContractError::InvalidConfig {
+            reason: format!("{field} must be <= {max}"),
+        });
+    }
+    Ok(())
 }
 
 /// Swap staging area: (user_addr) -> Vec<token_id>
@@ -66,6 +85,19 @@ pub fn instantiate(
         });
     }
 
+    let max_bidders_per_auction = msg.max_bidders_per_auction.unwrap_or(100);
+    validate_bounded_positive(
+        "max_bidders_per_auction",
+        max_bidders_per_auction,
+        MAX_BIDDERS_PER_AUCTION_CAP,
+    )?;
+
+    let max_staging_size = msg.max_staging_size.unwrap_or(50);
+    validate_bounded_positive("max_staging_size", max_staging_size, MAX_STAGING_SIZE_CAP)?;
+
+    let max_nfts_per_bid = msg.max_nfts_per_bid.unwrap_or(50);
+    validate_bounded_positive("max_nfts_per_bid", max_nfts_per_bid, MAX_NFTS_PER_BID_CAP)?;
+
     let mad_collection = deps.api.addr_validate(&msg.mad_scientist_collection)?;
     let mega_collection = deps.api.addr_validate(&msg.mega_mad_scientist_collection)?;
 
@@ -84,9 +116,9 @@ pub fn instantiate(
         anti_snipe_window: msg.anti_snipe_window.unwrap_or(300),
         anti_snipe_extension: msg.anti_snipe_extension.unwrap_or(300),
         max_extension: msg.max_extension.unwrap_or(86400), // 24 hours default cap
-        max_bidders_per_auction: msg.max_bidders_per_auction.unwrap_or(100),
-        max_staging_size: msg.max_staging_size.unwrap_or(50),
-        max_nfts_per_bid: msg.max_nfts_per_bid.unwrap_or(50),
+        max_bidders_per_auction,
+        max_staging_size,
+        max_nfts_per_bid,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -174,7 +206,7 @@ fn execute_receive_nft(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    receive_msg: cw721::Cw721ReceiveMsg,
+    receive_msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -332,7 +364,7 @@ fn execute_receive_bid(
             start_time: auction.start_time,
         });
     }
-    if now > auction.end_time {
+    if now >= auction.end_time {
         return Err(ContractError::AuctionAlreadyEnded { auction_id });
     }
 
@@ -356,9 +388,7 @@ fn execute_receive_bid(
     // HARDENING: Track new bidders and enforce max bidders cap
     let is_new_bidder = escrowed.is_empty();
     if is_new_bidder {
-        if config.max_bidders_per_auction > 0
-            && auction.total_bidders >= config.max_bidders_per_auction
-        {
+        if auction.total_bidders >= config.max_bidders_per_auction {
             return Err(ContractError::MaxBiddersReached {
                 auction_id,
                 max: config.max_bidders_per_auction,
@@ -369,7 +399,7 @@ fn execute_receive_bid(
     }
 
     // HARDENING: Cap per-bidder escrow size to prevent storage bloat
-    if config.max_nfts_per_bid > 0 && escrowed.len() as u64 >= config.max_nfts_per_bid {
+    if escrowed.len() as u64 >= config.max_nfts_per_bid {
         return Err(ContractError::MaxEscrowPerBidder {
             auction_id,
             max: config.max_nfts_per_bid,
@@ -488,7 +518,7 @@ fn execute_finalize_auction(
         // Transfer Cosmic Mad Scientist to winner
         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.mega_mad_scientist_collection.to_string(),
-            msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
+            msg: to_json_binary(&Cw721ExecEmpty::TransferNft {
                 recipient: winner.to_string(),
                 token_id: auction.mega_token_id.clone(),
             })?,
@@ -514,7 +544,7 @@ fn execute_finalize_auction(
         // No qualifying bids — return the Cosmic NFT to original depositor.
         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.mega_mad_scientist_collection.to_string(),
-            msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
+            msg: to_json_binary(&Cw721ExecEmpty::TransferNft {
                 recipient: auction.depositor.to_string(),
                 token_id: auction.mega_token_id.clone(),
             })?,
@@ -580,7 +610,7 @@ fn execute_withdraw_bid(
     for tid in &escrowed {
         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.mad_scientist_collection.to_string(),
-            msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
+            msg: to_json_binary(&Cw721ExecEmpty::TransferNft {
                 recipient: info.sender.to_string(),
                 token_id: tid.clone(),
             })?,
@@ -637,7 +667,7 @@ fn execute_cancel_auction(
     // Return the Cosmic NFT to original depositor
     let msgs: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: config.mega_mad_scientist_collection.to_string(),
-        msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
+        msg: to_json_binary(&Cw721ExecEmpty::TransferNft {
             recipient: auction.depositor.to_string(),
             token_id: auction.mega_token_id.clone(),
         })?,
@@ -671,7 +701,7 @@ fn execute_swap_deposit(
         .unwrap_or_default();
 
     // HARDENING: Cap staging size
-    if config.max_staging_size > 0 && staged.len() as u64 >= config.max_staging_size {
+    if staged.len() as u64 >= config.max_staging_size {
         return Err(ContractError::StagingLimitReached {
             max: config.max_staging_size,
         });
@@ -767,7 +797,7 @@ fn execute_claim_swap(
         POOL.remove(deps.storage, tid);
         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.mad_scientist_collection.to_string(),
-            msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
+            msg: to_json_binary(&Cw721ExecEmpty::TransferNft {
                 recipient: info.sender.to_string(),
                 token_id: tid.clone(),
             })?,
@@ -803,7 +833,7 @@ fn execute_withdraw_staged(deps: DepsMut, info: MessageInfo) -> Result<Response,
     for tid in &staged {
         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.mad_scientist_collection.to_string(),
-            msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
+            msg: to_json_binary(&Cw721ExecEmpty::TransferNft {
                 recipient: info.sender.to_string(),
                 token_id: tid.clone(),
             })?,
@@ -949,12 +979,19 @@ fn execute_update_config(
         config.max_extension = max;
     }
     if let Some(max_b) = args.max_bidders_per_auction {
+        validate_bounded_positive(
+            "max_bidders_per_auction",
+            max_b,
+            MAX_BIDDERS_PER_AUCTION_CAP,
+        )?;
         config.max_bidders_per_auction = max_b;
     }
     if let Some(max_s) = args.max_staging_size {
+        validate_bounded_positive("max_staging_size", max_s, MAX_STAGING_SIZE_CAP)?;
         config.max_staging_size = max_s;
     }
     if let Some(max_n) = args.max_nfts_per_bid {
+        validate_bounded_positive("max_nfts_per_bid", max_n, MAX_NFTS_PER_BID_CAP)?;
         config.max_nfts_per_bid = max_n;
     }
 
@@ -1034,23 +1071,19 @@ fn query_all_auctions(
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(cw_storage_plus::Bound::exclusive);
 
-    let auctions: Vec<Auction> = AUCTIONS
-        .range(deps.storage, start, None, Order::Ascending)
-        .filter_map(|r| {
-            r.ok().and_then(|(_, a)| {
-                if let Some(ref s) = status {
-                    if a.status == *s {
-                        Some(a)
-                    } else {
-                        None
-                    }
-                } else {
-                    Some(a)
-                }
-            })
-        })
-        .take(limit)
-        .collect();
+    let mut auctions: Vec<Auction> = Vec::with_capacity(limit);
+    for item in AUCTIONS.range(deps.storage, start, None, Order::Ascending) {
+        let (_, auction) = item?;
+        if let Some(ref s) = status {
+            if auction.status != *s {
+                continue;
+            }
+        }
+        auctions.push(auction);
+        if auctions.len() >= limit {
+            break;
+        }
+    }
 
     Ok(AuctionsResponse { auctions })
 }

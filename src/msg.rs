@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
-use cw721::Cw721ReceiveMsg;
+use cw721::receiver::Cw721ReceiveMsg;
 
 use crate::state::{Auction, AuctionStatus, Bid};
 
@@ -22,11 +22,11 @@ pub struct InstantiateMsg {
     pub anti_snipe_extension: Option<u64>,
     /// Maximum total extension beyond original end time (defaults to 86400 = 24 hours)
     pub max_extension: Option<u64>,
-    /// Maximum unique bidders per auction (defaults to 100, 0 = unlimited)
+    /// Maximum unique bidders per auction (defaults to 100, must be >= 1)
     pub max_bidders_per_auction: Option<u64>,
-    /// Maximum tokens a user can stage for swapping (defaults to 50, 0 = unlimited)
+    /// Maximum tokens a user can stage for swapping (defaults to 50, must be >= 1)
     pub max_staging_size: Option<u64>,
-    /// Maximum NFTs a single bidder can escrow per auction (defaults to 50, 0 = unlimited)
+    /// Maximum NFTs a single bidder can escrow per auction (defaults to 50, must be >= 1)
     pub max_nfts_per_bid: Option<u64>,
 }
 
