@@ -1,0 +1,42 @@
+name: odin-scan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Odin API key
+        env:
+          ODIN_SCAN_API_KEY: ${{ secrets.ODIN_SCAN_API_KEY }}
+        run: |
+          if [ -z "$ODIN_SCAN_API_KEY" ]; then
+            echo "Missing ODIN_SCAN_API_KEY GitHub secret"
+            echo "Add it in: Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+
+      - name: Run Odin Scan
+        uses: odin-scan/odin-scan-action@v1
+        with:
+          api-key: ${{ secrets.ODIN_SCAN_API_KEY }}
+          platform: cosmwasm
+          severity-threshold: high
+          fail-on-findings: true
+          comment-on-pr: true
+          findings-visibility: full
+          upload-sarif: true
+          upload-artifact: true
+          timeout: 1800

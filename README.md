@@ -210,3 +210,14 @@ Then call execute:
 - Reentrancy guards via CosmWasm's single-threaded execution model
 - Duplicate token ID detection in bids and swaps
 - Mandatory audit recommended before mainnet deployment
+
+### Odin Scan CI (every push)
+
+This repo includes `.github/workflows/odin-scan.yml` to run Odin Scan on every push and pull request.
+
+Required one-time setup:
+
+1. Install/connect Odin Scan to the GitHub repo.
+2. Add repository secret `ODIN_SCAN_API_KEY` in GitHub Actions secrets.
+
+The workflow is configured to fail on `high` or `critical` findings and upload SARIF/artifacts.
