@@ -30,6 +30,9 @@ pub struct InstantiateMsg {
     pub max_nfts_per_bid: Option<u64>,
 }
 
+#[cw_serde]
+pub struct MigrateMsg {}
+
 // ── Execute ───────────────────────────────────────────────────────────
 
 #[cw_serde]

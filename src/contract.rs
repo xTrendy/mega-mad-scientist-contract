@@ -4,14 +4,14 @@ use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
     Response, StdResult, WasmMsg,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
 use cw721::msg::Cw721ExecuteMsg;
 use cw721::receiver::Cw721ReceiveMsg;
 
 use crate::error::ContractError;
 use crate::msg::{
     AuctionResponse, AuctionsResponse, BidResponse, BidsResponse, ConfigResponse, ExecuteMsg,
-    InstantiateMsg, PoolContentsResponse, PoolSizeResponse, QueryMsg, ReceiveNftAction,
+    InstantiateMsg, MigrateMsg, PoolContentsResponse, PoolSizeResponse, QueryMsg, ReceiveNftAction,
     SwapStagingResponse,
 };
 use crate::state::{
@@ -28,6 +28,9 @@ const MAX_LIMIT: u32 = 100;
 const MAX_BIDDERS_PER_AUCTION_CAP: u64 = 1_000;
 const MAX_STAGING_SIZE_CAP: u64 = 1_000;
 const MAX_NFTS_PER_BID_CAP: u64 = 1_000;
+const MAX_ANTI_SNIPE_WINDOW: u64 = 86_400;
+const MAX_ANTI_SNIPE_EXTENSION: u64 = 86_400;
+const MAX_MAX_EXTENSION: u64 = 604_800;
 type Cw721ExecEmpty = Cw721ExecuteMsg<Empty, Empty, Empty>;
 
 struct UpdateConfigArgs {
@@ -49,6 +52,31 @@ fn validate_bounded_positive(field: &str, value: u64, max: u64) -> Result<(), Co
     if value > max {
         return Err(ContractError::InvalidConfig {
             reason: format!("{field} must be <= {max}"),
+        });
+    }
+    Ok(())
+}
+
+fn validate_anti_snipe_config(
+    anti_snipe_window: u64,
+    anti_snipe_extension: u64,
+    max_extension: u64,
+) -> Result<(), ContractError> {
+    validate_bounded_positive(
+        "anti_snipe_window",
+        anti_snipe_window,
+        MAX_ANTI_SNIPE_WINDOW,
+    )?;
+    validate_bounded_positive(
+        "anti_snipe_extension",
+        anti_snipe_extension,
+        MAX_ANTI_SNIPE_EXTENSION,
+    )?;
+    validate_bounded_positive("max_extension", max_extension, MAX_MAX_EXTENSION)?;
+
+    if anti_snipe_extension > max_extension {
+        return Err(ContractError::InvalidConfig {
+            reason: "anti_snipe_extension must be <= max_extension".to_string(),
         });
     }
     Ok(())
@@ -98,6 +126,11 @@ pub fn instantiate(
     let max_nfts_per_bid = msg.max_nfts_per_bid.unwrap_or(50);
     validate_bounded_positive("max_nfts_per_bid", max_nfts_per_bid, MAX_NFTS_PER_BID_CAP)?;
 
+    let anti_snipe_window = msg.anti_snipe_window.unwrap_or(300);
+    let anti_snipe_extension = msg.anti_snipe_extension.unwrap_or(300);
+    let max_extension = msg.max_extension.unwrap_or(86400);
+    validate_anti_snipe_config(anti_snipe_window, anti_snipe_extension, max_extension)?;
+
     let mad_collection = deps.api.addr_validate(&msg.mad_scientist_collection)?;
     let mega_collection = deps.api.addr_validate(&msg.mega_mad_scientist_collection)?;
 
@@ -113,9 +146,9 @@ pub fn instantiate(
         mad_scientist_collection: mad_collection,
         mega_mad_scientist_collection: mega_collection,
         default_min_bid,
-        anti_snipe_window: msg.anti_snipe_window.unwrap_or(300),
-        anti_snipe_extension: msg.anti_snipe_extension.unwrap_or(300),
-        max_extension: msg.max_extension.unwrap_or(86400), // 24 hours default cap
+        anti_snipe_window,
+        anti_snipe_extension,
+        max_extension,
         max_bidders_per_auction,
         max_staging_size,
         max_nfts_per_bid,
@@ -196,6 +229,26 @@ pub fn execute(
         ),
         ExecuteMsg::ReceiveNft(receive_msg) => execute_receive_nft(deps, env, info, receive_msg),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::InvalidConfig {
+            reason: format!(
+                "cannot migrate from different contract: expected {}, got {}",
+                CONTRACT_NAME, version.contract
+            ),
+        });
+    }
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_attribute("from_version", version.version)
+        .add_attribute("to_version", CONTRACT_VERSION))
 }
 
 // ── CW721 Receive Hook ───────────────────────────────────────────────
@@ -995,6 +1048,12 @@ fn execute_update_config(
         config.max_nfts_per_bid = max_n;
     }
 
+    validate_anti_snipe_config(
+        config.anti_snipe_window,
+        config.anti_snipe_extension,
+        config.max_extension,
+    )?;
+
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
@@ -1053,9 +1112,12 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 fn query_auction(deps: Deps, auction_id: u64) -> StdResult<AuctionResponse> {
     let auction = AUCTIONS.load(deps.storage, auction_id)?;
 
+    // Bound bid payload size for this convenience query.
+    // For full traversal, callers should use GetBids with pagination.
     let bids: Vec<Bid> = BIDS
         .prefix(auction_id)
         .range(deps.storage, None, None, Order::Ascending)
+        .take(MAX_LIMIT as usize)
         .map(|r| r.map(|(_, bid)| bid))
         .collect::<StdResult<Vec<_>>>()?;
 

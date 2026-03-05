@@ -7,10 +7,11 @@ use cosmwasm_std::{
     from_json, to_json_binary, Addr, ContractResult, CosmosMsg, Empty, Env, OwnedDeps,
     QuerierResult, Storage, SystemError, SystemResult, Timestamp, WasmMsg, WasmQuery,
 };
+use cw2::set_contract_version;
 use cw721::msg::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw721::receiver::Cw721ReceiveMsg;
 
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{execute, instantiate, migrate, query};
 use crate::error::ContractError;
 use crate::msg::*;
 use crate::state::{AuctionStatus, AUCTIONS};
@@ -306,6 +307,77 @@ fn test_instantiate_rejects_limits_above_cap() {
         max_nfts_per_bid: Some(1_001),
     };
     let err = instantiate(deps.as_mut(), mock_env(), mock_info(ADMIN, &[]), msg).unwrap_err();
+    assert!(matches!(err, ContractError::InvalidConfig { .. }));
+}
+
+#[test]
+fn test_instantiate_rejects_invalid_anti_snipe_config() {
+    let mut deps = mock_dependencies();
+
+    let msg = InstantiateMsg {
+        admin: Some(ADMIN.to_string()),
+        mad_scientist_collection: MAD_COLLECTION.to_string(),
+        mega_mad_scientist_collection: MEGA_COLLECTION.to_string(),
+        default_min_bid: Some(1),
+        anti_snipe_window: Some(0),
+        anti_snipe_extension: Some(300),
+        max_extension: Some(86400),
+        max_bidders_per_auction: Some(100),
+        max_staging_size: Some(50),
+        max_nfts_per_bid: Some(50),
+    };
+    let err = instantiate(deps.as_mut(), mock_env(), mock_info(ADMIN, &[]), msg).unwrap_err();
+    assert!(matches!(err, ContractError::InvalidConfig { .. }));
+
+    let msg = InstantiateMsg {
+        admin: Some(ADMIN.to_string()),
+        mad_scientist_collection: MAD_COLLECTION.to_string(),
+        mega_mad_scientist_collection: MEGA_COLLECTION.to_string(),
+        default_min_bid: Some(1),
+        anti_snipe_window: Some(300),
+        anti_snipe_extension: Some(0),
+        max_extension: Some(86400),
+        max_bidders_per_auction: Some(100),
+        max_staging_size: Some(50),
+        max_nfts_per_bid: Some(50),
+    };
+    let err = instantiate(deps.as_mut(), mock_env(), mock_info(ADMIN, &[]), msg).unwrap_err();
+    assert!(matches!(err, ContractError::InvalidConfig { .. }));
+
+    let msg = InstantiateMsg {
+        admin: Some(ADMIN.to_string()),
+        mad_scientist_collection: MAD_COLLECTION.to_string(),
+        mega_mad_scientist_collection: MEGA_COLLECTION.to_string(),
+        default_min_bid: Some(1),
+        anti_snipe_window: Some(300),
+        anti_snipe_extension: Some(600),
+        max_extension: Some(500),
+        max_bidders_per_auction: Some(100),
+        max_staging_size: Some(50),
+        max_nfts_per_bid: Some(50),
+    };
+    let err = instantiate(deps.as_mut(), mock_env(), mock_info(ADMIN, &[]), msg).unwrap_err();
+    assert!(matches!(err, ContractError::InvalidConfig { .. }));
+}
+
+#[test]
+fn test_migrate_entrypoint_works() {
+    let mut deps = mock_dependencies();
+    setup_contract(&mut deps);
+
+    let res = migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    assert!(res
+        .attributes
+        .iter()
+        .any(|a| a.key == "action" && a.value == "migrate"));
+}
+
+#[test]
+fn test_migrate_rejects_wrong_contract_name() {
+    let mut deps = mock_dependencies();
+    set_contract_version(deps.as_mut().storage, "other-contract", "0.0.1").unwrap();
+
+    let err = migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert!(matches!(err, ContractError::InvalidConfig { .. }));
 }
 
@@ -1649,6 +1721,63 @@ fn test_update_config_rejects_limits_above_cap() {
     assert!(matches!(err, ContractError::InvalidConfig { .. }));
 }
 
+#[test]
+fn test_update_config_rejects_invalid_anti_snipe_config() {
+    let mut deps = mock_dependencies();
+    setup_contract(&mut deps);
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(ADMIN, &[]),
+        ExecuteMsg::UpdateConfig {
+            default_min_bid: None,
+            anti_snipe_window: Some(0),
+            anti_snipe_extension: None,
+            max_extension: None,
+            max_bidders_per_auction: None,
+            max_staging_size: None,
+            max_nfts_per_bid: None,
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err, ContractError::InvalidConfig { .. }));
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(ADMIN, &[]),
+        ExecuteMsg::UpdateConfig {
+            default_min_bid: None,
+            anti_snipe_window: None,
+            anti_snipe_extension: Some(0),
+            max_extension: None,
+            max_bidders_per_auction: None,
+            max_staging_size: None,
+            max_nfts_per_bid: None,
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err, ContractError::InvalidConfig { .. }));
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(ADMIN, &[]),
+        ExecuteMsg::UpdateConfig {
+            default_min_bid: None,
+            anti_snipe_window: Some(300),
+            anti_snipe_extension: Some(600),
+            max_extension: Some(500),
+            max_bidders_per_auction: None,
+            max_staging_size: None,
+            max_nfts_per_bid: None,
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err, ContractError::InvalidConfig { .. }));
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // QUERY TESTS
 // ═══════════════════════════════════════════════════════════════════════
@@ -1724,6 +1853,45 @@ fn test_query_all_auctions_propagates_deserialization_errors() {
     )
     .unwrap_err();
     assert!(!err.to_string().is_empty());
+}
+
+#[test]
+fn test_query_auction_bid_list_is_bounded() {
+    let mut deps = mock_deps_with_nft_querier();
+
+    let msg = InstantiateMsg {
+        admin: Some(ADMIN.to_string()),
+        mad_scientist_collection: MAD_COLLECTION.to_string(),
+        mega_mad_scientist_collection: MEGA_COLLECTION.to_string(),
+        default_min_bid: Some(1),
+        anti_snipe_window: Some(300),
+        anti_snipe_extension: Some(300),
+        max_extension: Some(86400),
+        max_bidders_per_auction: Some(200),
+        max_staging_size: Some(50),
+        max_nfts_per_bid: Some(50),
+    };
+    instantiate(deps.as_mut(), mock_env_at(1000), mock_info(ADMIN, &[]), msg).unwrap();
+
+    send_mega_for_auction(&mut deps, "mega_1", 1000, 5000, Some(1));
+
+    for i in 0..120 {
+        let bidder = MockApi::default().addr_make(format!("bounded-bidder-{i}").as_str());
+        let token_id = format!("mad-{i}");
+        send_bid_nft(&mut deps, bidder.as_str(), token_id.as_str(), 1, 2000).unwrap();
+    }
+
+    let auction_resp: AuctionResponse = from_json(
+        query(
+            deps.as_ref(),
+            mock_env_at(2500),
+            QueryMsg::GetAuction { auction_id: 1 },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(auction_resp.bids.len(), 100);
 }
 
 #[test]
